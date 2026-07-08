@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ship Loop"
+  short_description: "Automate repo plan and ticket shipping"
+  default_prompt: "Use $ship-loop to finalize the full current conversation into a repo-owned plan, choose the slug, use the current branch as base, and run the ticket implementation loop."

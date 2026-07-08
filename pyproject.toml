@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shiploop-cli"
+version = "0.1.0"
+description = "Terminal status UI for ship-loop runs"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+  "textual==0.58.1",
+]
+
+[project.scripts]
+shiploop = "shiploop_cli.cli:main"
+
+[tool.setuptools]
+packages = ["shiploop_cli"]
+
+[tool.setuptools.package-data]
+shiploop_cli = ["app.tcss"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

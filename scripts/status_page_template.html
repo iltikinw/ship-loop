@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ship Loop</title>
+<style>
+:root { color-scheme: light; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; --gap: 8px; --border: #ddd; --row-border: var(--border); }
+body { margin: 0; background: #fff; color: #111; }
+main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+h1 { font-size: 20px; margin: 0 0 2px; letter-spacing: 0; }
+h2 { font-size: 12px; margin: 12px 0 6px; letter-spacing: 0; }
+.meta { color: #555; font-size: 12px; }
+.controls { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; align-items: center; }
+.button { border: 1px solid var(--border); border-radius: 0; background: #fff; color: #111; padding: 5px 8px; font: inherit; font-size: 12px; cursor: pointer; }
+.button:hover { background: #f6f6f6; }
+.control-status { color: #555; font-size: 12px; min-height: 14px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--gap); margin: 0 0 var(--gap); }
+.panel { background: #fff; border: 1px solid var(--border); border-radius: 0; padding: 10px; min-width: 0; overflow: hidden; }
+.panel h2 { margin: -10px -10px 10px; padding: 6px 8px; background: #fafafa; border-bottom: 1px solid var(--row-border); font-size: 12px; }
+.label { color: #555; font-size: 11px; margin-bottom: 4px; }
+.value { font-size: 16px; font-weight: 600; }
+.subvalue { color: #555; font-size: 12px; margin-top: 2px; overflow-wrap: anywhere; }
+.status-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.badge { display: inline-flex; align-items: center; border-radius: 0; padding: 2px 5px; font-size: 12px; line-height: 1.2; background: #fff; color: #111; border: 1px solid var(--border); }
+.details { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--gap); margin-bottom: var(--gap); }
+.empty { color: #777; font-size: 12px; }
+code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #fff; border: 1px solid var(--border); border-radius: 0; padding: 8px; font-size: 12px; margin: 0 0 8px; }
+.path-row { margin-top: 0; }
+.middle-ellipsis { display: block; min-width: 0; overflow: hidden; text-overflow: clip; white-space: nowrap; }
+.state-row { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: stretch; margin: 0 0 var(--gap); border: 1px solid var(--border); }
+.state-label { background: #fafafa; border-right: 1px solid var(--row-border); font-weight: 600; padding: 6px 8px; font-size: 12px; }
+.state-row pre { margin: 0; padding: 6px 8px; border: 0; }
+table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--border); }
+th, td { text-align: left; border-bottom: 1px solid var(--row-border); padding: 6px 8px; font-size: 12px; vertical-align: top; }
+th { font-weight: 600; background: #fafafa; }
+tr:last-child td { border-bottom: 0; }
+.tickets-table { margin-top: 0; }
+.detail-table { border: 0; margin: -6px -8px; width: calc(100% + 16px); table-layout: fixed; }
+.detail-table th { width: 72px; color: #555; background: #fff; font-weight: 400; }
+.detail-table th, .detail-table td { font-size: 12px; border-bottom: 1px solid var(--row-border); }
+.detail-table td { min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
+.detail-table td.middle-ellipsis { display: table-cell; overflow: hidden; text-overflow: clip; white-space: nowrap; overflow-wrap: normal; word-break: normal; }
+.detail-table tr:last-child th, .detail-table tr:last-child td { border-bottom: 0; }
+.log-panel { margin-top: var(--gap); }
+.log-head { display: grid; grid-template-columns: minmax(0, 1fr) max-content; border: 1px solid var(--border); border-bottom: 0; background: #fafafa; }
+.log-label { background: #fafafa; font-weight: 600; padding: 6px 8px; font-size: 12px; }
+.log-toggle { border: 0; border-left: 1px solid var(--row-border); background: #fafafa; font: inherit; font-size: 12px; padding: 6px 8px; cursor: pointer; }
+.log-tail { height: 260px; overflow: auto; margin: 0; border: 1px solid var(--border); padding: 8px; white-space: pre-wrap; }
+.log-panel.collapsed .log-tail { display: none; }
+.log-panel.collapsed .log-head { border-bottom: 1px solid var(--border); }
+</style>
+</head>
+<body>
+<main>
+<h1 id="plan-slug"></h1>
+<div class="controls">
+  <button class="button" type="button" onclick="shipLoopControl('/control/pause')">Pause</button>
+  <button class="button" type="button" onclick="shipLoopControl('/control/resume')">Resume</button>
+  <button class="button" type="button" onclick="shipLoopControl('/control/close')">Close Page</button>
+  <span id="control-status" class="control-status"></span>
+</div>
+<div class="grid">
+  <div class="panel"><div class="label">Tickets</div><div id="tickets-total" class="value"></div><div id="status-counts" class="status-list"></div></div>
+  <div class="panel"><div class="label">Current</div><div id="current-ticket" class="value"></div><div id="current-stage" class="subvalue"></div></div>
+</div>
+<div class="state-row"><div class="state-label">State File</div><pre id="state-file" class="path-row middle-ellipsis"></pre></div>
+<div class="details">
+  <section class="panel"><h2>Active Child</h2><div id="active-child-body"></div></section>
+  <section class="panel"><h2>Last Event</h2><div id="last-event-body"></div></section>
+  <section class="panel"><h2>Blocker</h2><div id="blocker-body"></div></section>
+</div>
+<table class="tickets-table">
+<thead><tr><th>Ticket</th><th>Repo</th><th>Title</th><th>Status</th><th>Stage</th><th>Commit</th></tr></thead>
+<tbody id="tickets-body"></tbody>
+</table>
+<section id="log-panel" class="log-panel">
+  <div class="log-head">
+    <div class="log-label">Log Tail</div>
+    <button id="log-toggle" class="log-toggle" type="button" onclick="shipLoopToggleLog()">Collapse</button>
+  </div>
+  <pre id="recent-log-tail" class="log-tail"></pre>
+</section>
+</main>
+<script id="ship-loop-initial-payload" type="application/json">__SHIP_LOOP_PAYLOAD_JSON__</script>
+<script>
+function shipLoopEscape(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+function shipLoopShortSha(value) {
+  return typeof value === "string" ? value.slice(0, 10) : "";
+}
+
+function shipLoopYesNo(value) {
+  if (value === true) return "yes";
+  if (value === false) return "no";
+  return "";
+}
+
+function shipLoopSeconds(value) {
+  if (typeof value !== "number") return "";
+  if (value < 1) return "<1s";
+  const total = Math.floor(value);
+  if (total < 60) return total + "s";
+  const minutes = Math.floor(total / 60);
+  const seconds = total % 60;
+  if (minutes < 60) return minutes + "m " + seconds + "s";
+  return Math.floor(minutes / 60) + "h " + (minutes % 60) + "m";
+}
+
+function shipLoopBadge(label) {
+  return '<span class="badge">' + shipLoopEscape(label) + '</span>';
+}
+
+function shipLoopStatusCounts(counts) {
+  if (!counts || Object.keys(counts).length === 0) return '<span class="empty">None</span>';
+  return Object.keys(counts).sort().map((status) => shipLoopBadge(status + ": " + counts[status])).join("");
+}
+
+function shipLoopDetailRows(items, emptyText) {
+  const visible = items.filter((item) => item[1] !== null && item[1] !== undefined && item[1] !== "");
+  if (visible.length === 0) return '<div class="empty">' + shipLoopEscape(emptyText) + '</div>';
+  const rows = visible.map((item) =>
+    '<tr><th>' + shipLoopEscape(item[0]) + '</th><td' + shipLoopPathAttrs(item[0], item[1]) + '>' + shipLoopEscape(item[1]) + '</td></tr>'
+  ).join("");
+  return '<table class="detail-table"><tbody>' + rows + '</tbody></table>';
+}
+
+function shipLoopPathAttrs(key, value) {
+  if (key !== "Log") return "";
+  return ' class="middle-ellipsis" title="' + shipLoopEscape(value) + '" data-full-text="' + shipLoopEscape(value) + '"';
+}
+
+function shipLoopMiddleEllipsize(text, maxChars) {
+  if (text.length <= maxChars) return text;
+  if (maxChars <= 5) return text.slice(0, Math.max(1, maxChars - 1)) + "...";
+  const keep = maxChars - 3;
+  const head = Math.ceil(keep * 0.45);
+  const tail = Math.floor(keep * 0.55);
+  return text.slice(0, head) + "..." + text.slice(text.length - tail);
+}
+
+function shipLoopApplyMiddleEllipsis(element) {
+  const full = element.dataset.fullText || element.textContent || "";
+  element.dataset.fullText = full;
+  element.textContent = full;
+  if (!full || element.scrollWidth <= element.clientWidth) return;
+  const style = window.getComputedStyle(element);
+  const fontSize = Number.parseFloat(style.fontSize) || 12;
+  const approxCharWidth = fontSize * 0.62;
+  let maxChars = Math.max(8, Math.floor(element.clientWidth / approxCharWidth));
+  element.textContent = shipLoopMiddleEllipsize(full, maxChars);
+  while (maxChars > 8 && element.scrollWidth > element.clientWidth) {
+    maxChars -= 1;
+    element.textContent = shipLoopMiddleEllipsize(full, maxChars);
+  }
+}
+
+function shipLoopApplyPathEllipses() {
+  document.querySelectorAll(".middle-ellipsis").forEach(shipLoopApplyMiddleEllipsis);
+}
+
+function shipLoopRenderDetail(id, items, emptyText) {
+  const target = document.getElementById(id);
+  if (target) target.innerHTML = shipLoopDetailRows(items, emptyText);
+}
+
+function shipLoopCleanEventMessage(value) {
+  if (typeof value !== "string") return value;
+  return value.replace(/;\s*log:\s+\S+\s*$/i, "");
+}
+
+function shipLoopFormatLogLine(line) {
+  if (typeof line !== "string") return "";
+  const trimmed = line.trim();
+  if (!trimmed) return line;
+  try {
+    return JSON.stringify(JSON.parse(trimmed), null, 2);
+  } catch {
+    return line;
+  }
+}
+
+function shipLoopFormatLogLines(lines) {
+  if (!Array.isArray(lines)) return "";
+  return lines.slice(-100).map(shipLoopFormatLogLine).join("\n");
+}
+
+function shipLoopRender(payload) {
+  window.shipLoopStorageKey = "ship-loop:log-collapsed:" + (payload.state_file || payload.plan_slug || "default");
+  document.title = "Ship Loop - " + shipLoopEscape(payload.plan_slug);
+  const title = document.getElementById("plan-slug");
+  if (title) title.textContent = payload.plan_slug || "";
+
+  const ticketsTotal = document.getElementById("tickets-total");
+  if (ticketsTotal) ticketsTotal.textContent = payload.tickets_total ?? 0;
+  const statusCounts = document.getElementById("status-counts");
+  if (statusCounts) statusCounts.innerHTML = shipLoopStatusCounts(payload.tickets_by_status || {});
+
+  const current = payload.current && typeof payload.current === "object" ? payload.current : {};
+  const currentTicket = document.getElementById("current-ticket");
+  if (currentTicket) currentTicket.textContent = current.ticket_id || "None";
+  const currentStage = document.getElementById("current-stage");
+  if (currentStage) currentStage.textContent = current.stage || "";
+
+  const stateFile = document.getElementById("state-file");
+  if (stateFile) {
+    const path = payload.state_file_display || payload.state_file || "";
+    stateFile.dataset.fullText = path;
+    stateFile.title = path;
+    stateFile.textContent = path;
+  }
+
+  const active = payload.active_child && typeof payload.active_child === "object" ? payload.active_child : null;
+  shipLoopRenderDetail("active-child-body", active ? [
+    ["Ticket", active.ticket_id],
+    ["Stage", active.stage],
+    ["PID", active.pid],
+    ["Alive", shipLoopYesNo(active.pid_alive)],
+    ["CPU", shipLoopSeconds(active.cpu_seconds)],
+    ["Log age", shipLoopSeconds(active.log_mtime_age_seconds)],
+    ["Result", active.result_exists ? "present" : "pending"],
+  ] : [], "No active child process");
+
+  const event = payload.last_event && typeof payload.last_event === "object" ? payload.last_event : null;
+  shipLoopRenderDetail("last-event-body", event ? [
+    ["Phase", event.phase],
+    ["Status", event.status],
+    ["Ticket", event.ticket_id],
+    ["Stage", event.stage],
+    ["Message", shipLoopCleanEventMessage(event.message)],
+  ] : [], "No events recorded");
+
+  const blocker = payload.blocker && typeof payload.blocker === "object" ? payload.blocker : null;
+  shipLoopRenderDetail("blocker-body", blocker ? [
+    ["Reason", blocker.reason],
+    ["Ticket", blocker.ticket_id],
+    ["Stage", blocker.stage || blocker.phase],
+    ["Message", blocker.message],
+    ["Command", blocker.command],
+  ] : [], "No blocker recorded");
+
+  const recentLog = payload.recent_log && typeof payload.recent_log === "object" ? payload.recent_log : null;
+  const recentLogTail = document.getElementById("recent-log-tail");
+  if (recentLogTail) {
+    if (!recentLog) {
+      recentLogTail.textContent = "";
+    } else if (recentLog.error) {
+      recentLogTail.textContent = "Log unavailable: " + recentLog.error;
+    } else {
+      const lines = Array.isArray(recentLog.lines) ? recentLog.lines : [];
+      recentLogTail.textContent = (recentLog.truncated ? "...\n" : "") + shipLoopFormatLogLines(lines);
+    }
+  }
+
+  const ticketBody = document.getElementById("tickets-body");
+  if (ticketBody) {
+    const tickets = Array.isArray(payload.tickets) ? payload.tickets : [];
+    ticketBody.innerHTML = tickets.map((ticket) =>
+      "<tr>" +
+      "<td>" + shipLoopEscape(ticket.id) + "</td>" +
+      "<td>" + shipLoopEscape(ticket.target_repo) + "</td>" +
+      "<td>" + shipLoopEscape(ticket.title) + "</td>" +
+      "<td>" + shipLoopBadge(ticket.status || "unknown") + "</td>" +
+      "<td>" + shipLoopEscape(ticket.stage) + "</td>" +
+      "<td><code>" + shipLoopEscape(shipLoopShortSha(ticket.commit)) + "</code></td>" +
+      "</tr>"
+    ).join("");
+  }
+  shipLoopApplyPathEllipses();
+  shipLoopApplyStoredLogCollapse();
+}
+
+async function shipLoopPoll() {
+  try {
+    const response = await fetch("/state.json", { cache: "no-store" });
+    if (!response.ok) throw new Error("status " + response.status);
+    shipLoopRender(await response.json());
+  } catch (error) {
+    const status = document.getElementById("control-status");
+    if (status) status.textContent = "Polling failed: " + String(error);
+  }
+}
+
+async function shipLoopControl(path) {
+  const status = document.getElementById("control-status");
+  status.textContent = "Working...";
+  try {
+    const response = await fetch(path, { method: "POST" });
+    const text = await response.text();
+    status.textContent = text;
+    if (path === "/control/close" && response.ok) {
+      window.setTimeout(() => {
+        document.body.innerHTML = "<main><h1>Ship Loop</h1><div class='meta'>Status page closed.</div></main>";
+      }, 700);
+    } else {
+      window.setTimeout(shipLoopPoll, 900);
+    }
+  } catch (error) {
+    status.textContent = String(error);
+  }
+}
+
+function shipLoopToggleLog() {
+  const panel = document.getElementById("log-panel");
+  const toggle = document.getElementById("log-toggle");
+  if (!panel || !toggle) return;
+  const collapsed = panel.classList.toggle("collapsed");
+  toggle.textContent = collapsed ? "Expand" : "Collapse";
+  if (window.shipLoopStorageKey) {
+    window.localStorage.setItem(window.shipLoopStorageKey, collapsed ? "true" : "false");
+  }
+}
+
+function shipLoopApplyStoredLogCollapse() {
+  const panel = document.getElementById("log-panel");
+  const toggle = document.getElementById("log-toggle");
+  if (!panel || !toggle || !window.shipLoopStorageKey) return;
+  const collapsed = window.localStorage.getItem(window.shipLoopStorageKey) === "true";
+  panel.classList.toggle("collapsed", collapsed);
+  toggle.textContent = collapsed ? "Expand" : "Collapse";
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  const initialPayload = document.getElementById("ship-loop-initial-payload");
+  if (initialPayload && initialPayload.textContent) {
+    try {
+      shipLoopRender(JSON.parse(initialPayload.textContent));
+    } catch (error) {
+      const status = document.getElementById("control-status");
+      if (status) status.textContent = "Initial render failed: " + String(error);
+    }
+  }
+  shipLoopPoll();
+  window.setInterval(shipLoopPoll, 1000);
+  window.addEventListener("resize", shipLoopApplyPathEllipses);
+});
+</script>
+</body>
+</html>

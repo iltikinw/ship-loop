@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "repo",
+    "status",
+    "findings",
+    "residual_risks"
+  ],
+  "properties": {
+    "repo": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "enum": ["pass", "fail"] },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["severity", "file", "line", "description", "required_fix"],
+        "properties": {
+          "severity": { "type": "string", "enum": ["critical", "high", "medium", "low"] },
+          "file": { "type": "string", "minLength": 1 },
+          "line": { "type": ["integer", "null"], "minimum": 1 },
+          "description": { "type": "string", "minLength": 1 },
+          "required_fix": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "residual_risks": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "status": { "const": "pass" } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": { "findings": { "maxItems": 0 } }
+      }
+    },
+    {
+      "if": {
+        "properties": { "status": { "const": "fail" } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": { "findings": { "minItems": 1 } }
+      }
+    }
+  ]
+}

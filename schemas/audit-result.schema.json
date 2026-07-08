@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ticket_id",
+    "target_repo",
+    "status",
+    "findings",
+    "summary"
+  ],
+  "properties": {
+    "ticket_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target_repo": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail"
+      ]
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "scope",
+          "severity",
+          "file",
+          "line",
+          "description",
+          "required_fix"
+        ],
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "in_scope",
+              "adjacent_followup",
+              "out_of_scope"
+            ]
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "file": {
+            "type": "string",
+            "minLength": 1
+          },
+          "line": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "required_fix": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

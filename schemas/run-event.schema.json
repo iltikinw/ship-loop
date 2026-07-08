@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["timestamp"],
+  "properties": {
+    "timestamp": { "type": "string", "minLength": 1 },
+    "phase": { "type": "string", "minLength": 1 },
+    "ticket_id": { "type": "string", "minLength": 1 },
+    "target_repo": { "type": "string", "minLength": 1 },
+    "stage": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "minLength": 1 },
+    "elapsed_seconds": { "type": "integer", "minimum": 0 },
+    "attempt": { "type": "integer", "minimum": 0 },
+    "commit": { "type": "string", "minLength": 1 },
+    "log": { "type": "string", "minLength": 1 },
+    "message": { "type": "string", "minLength": 1 }
+  }
+}
