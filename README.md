@@ -1,6 +1,7 @@
 # Ship Loop
 
-![Sample Ship Loop status page](docs/images/sample-ship-loop-status.png)Ship Loop is a Codex skill for turning a scoped feature, fix, or improvement into a repo-owned plan, then running a deterministic ticket implementation loop with durable state, per-ticket commits, resume support, final review, and optional PR creation.
+![Sample Ship Loop status page](docs/images/sample-ship-loop-status.png)
+Ship Loop is a Codex skill for turning a scoped feature, fix, or improvement into a repo-owned plan, then running a deterministic ticket implementation loop with durable state, per-ticket commits, resume support, final review, and optional PR creation.
 
 The skill is intentionally repo-driven. Product details, plan structure, ticket prompts, and workspace policy live in the target repo or workspace. The skill supplies the orchestration contract and helper scripts.
 
